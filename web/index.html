@@ -40,7 +40,7 @@
         <div class="logo">
           <div class="logo-icon"><i class="fas fa-undo-alt"></i></div>
           <div class="logo-text">
-            <h1>Sistema de Devoluciones</h1>
+            <h1>Gestión de Tienda</h1>
             <p>PANEL DE ADMINISTRACIÓN</p>
           </div>
         </div>
@@ -82,50 +82,7 @@
                 <i class="fas fa-plus-circle"></i> Añadir Item
               </div>
 
-              <div class="mode-toggle" style="margin-bottom: 15px">
-                <button class="mode-btn active" id="manualModeBtn" disabled>
-                  <i class="fas fa-keyboard"></i> Manual
-                </button>
-                <button class="mode-btn" id="selectorModeBtn">
-                  <i class="fas fa-list"></i> Selector
-                </button>
-              </div>
-
-              <div id="manualMode" style="display: none">
-                <div class="form-row">
-                  <div class="form-field">
-                    <label>Título</label>
-                    <input type="text" id="itemTitle" placeholder="Ej: Ferrari F40" />
-                  </div>
-                  <div class="form-field">
-                    <label>Tipo</label>
-                    <select id="itemType">
-                      <option value="Coche">Coche</option>
-                      <option value="Item">Item</option>
-                      <option value="Dinero">Dinero</option>
-                      <option value="Banco">Banco</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div class="form-row">
-                  <div class="form-field">
-                    <label>Modelo/Item</label>
-                    <input type="text" id="itemModel" placeholder="Ej: zentorno / bread" />
-                  </div>
-                  <div class="form-field">
-                    <label>Cantidad</label>
-                    <input type="number" id="itemAmount" value="1" min="1" />
-                  </div>
-                </div>
-
-                <div class="form-field">
-                  <label>Descripción</label>
-                  <textarea id="itemDescription" placeholder="Descripción opcional..."></textarea>
-                </div>
-              </div>
-
-              <div id="selectorMode" style="display: block">
+              <div id="selectorMode">
                 <div class="form-field">
                   <label>Buscar Producto</label>
                   <input type="text" id="searchProduct" placeholder="Buscar por nombre, modelo o descripción..." />
@@ -163,9 +120,16 @@
               <div class="player-details">
                 <h3 id="selectedPlayerName">Selecciona un jugador</h3>
                 <p id="selectedPlayerInfo">ID: --- | Discord: ---</p>
+                <p id="selectedPlayerCoins" style="margin-top: 5px; color: #ffd700; font-weight: 600;">
+                  <i class="fas fa-coins"></i> pCoins: ---
+                </p>
               </div>
             </div>
             <div class="actions">
+              <button class="btn btn-secondary" id="managePCoinsBtn" disabled
+                style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #000;">
+                <i class="fas fa-coins"></i>Gestionar pCoins
+              </button>
               <button class="btn btn-secondary" id="refreshBtn">
                 <i class="fas fa-sync-alt"></i>Actualizar
               </button>
@@ -178,6 +142,10 @@
             <div class="items-header">
               <div class="items-title">Items del Jugador</div>
               <div class="items-count" id="itemsCount">0 items</div>
+              <button class="btn btn-danger" id="deleteItemBtn" disabled
+                style="padding: 6px 12px; font-size: 12px; margin-left: auto;">
+                <i class="fas fa-trash"></i> Eliminar Item
+              </button>
             </div>
             <div class="items-grid" id="itemsGrid" style="display: none"></div>
             <div class="no-data" id="noDataState">
@@ -224,6 +192,7 @@
             <p id="confirmMessage">
               ¿Estás seguro de que deseas devolver este item al jugador?
             </p>
+            <div id="dynamicInputs"></div>
             <div class="form-group">
               <label for="returnReason">Motivo de la devolución (opcional)</label>
               <textarea id="returnReason" rows="3" placeholder="Ej: Item perdido por bug del servidor..."></textarea>
@@ -239,6 +208,70 @@
           </div>
         </div>
       </div>
+
+      <div class="modal-overlay" id="pCoinsModal">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-coins"></i> Gestionar pCoins</div>
+            <button class="close-modal" id="closePCoinsModal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p id="pCoinsPlayerInfo" style="margin-bottom: 15px; color: #999;"></p>
+            <div
+              style="background: rgba(255, 215, 0, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid rgba(255, 215, 0, 0.3);">
+              <div style="font-size: 12px; color: #ffd700; margin-bottom: 5px;">Balance Actual</div>
+              <div style="font-size: 24px; font-weight: 700; color: #ffd700;">
+                <i class="fas fa-coins"></i> <span id="currentPCoins">0</span> pCoins
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Cantidad de pCoins</label>
+              <input type="number" id="pCoinsAmount" value="100" min="1" placeholder="Cantidad..." />
+            </div>
+            <div class="form-field">
+              <label>Motivo (opcional)</label>
+              <textarea id="pCoinsReason" rows="2" placeholder="Ej: Compensación por bug..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelPCoins">Cancelar</button>
+            <button class="btn btn-danger" id="removePCoins"
+              style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">
+              <i class="fas fa-minus-circle"></i> Quitar pCoins
+            </button>
+            <button class="btn" id="addPCoins" style="background: linear-gradient(135deg, #28a745 0%, #218838 100%);">
+              <i class="fas fa-plus-circle"></i> Añadir pCoins
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="deleteItemModal">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-trash"></i> Confirmar Eliminación</div>
+            <button class="close-modal" id="closeDeleteModal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p id="deleteItemMessage" style="margin-bottom: 15px;"></p>
+            <div
+              style="background: rgba(220, 53, 69, 0.1); padding: 15px; border-radius: 8px; border: 1px solid rgba(220, 53, 69, 0.3);">
+              <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+              <strong style="color: #dc3545;">Advertencia:</strong> Esta acción no se puede deshacer.
+            </div>
+            <div class="form-field" style="margin-top: 15px;">
+              <label>Motivo de eliminación (opcional)</label>
+              <textarea id="deleteItemReason" rows="2" placeholder="Ej: Producto duplicado..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelDeleteItem">Cancelar</button>
+            <button class="btn btn-danger" id="confirmDeleteItem">
+              <i class="fas fa-trash"></i> Confirmar Eliminación
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -248,15 +281,9 @@
     let selectedItem = null;
     let isOnlineMode = true;
     let offlineCharacters = [];
-    let isManualMode = false;
     let allProducts = [];
     let selectedProduct = null;
-
-    document.getElementById("manualMode").style.display = "none";
-    document.getElementById("selectorMode").style.display = "block";
-    document.getElementById("manualModeBtn").classList.remove("active");
-    document.getElementById("selectorModeBtn").classList.add("active");
-    document.getElementById("manualModeBtn").disabled = true;
+    let currentPCoins = 0;
 
     function updateTabletStatus() {
       const now = new Date();
@@ -271,7 +298,7 @@
     updateTabletStatus();
 
     setInterval(updateTabletStatus, 1000);
-    
+
     function loadPlayers() {
       const list = document.getElementById("playersList");
       const searchTerm = (
@@ -324,14 +351,28 @@
           : "ID: --- | Discord: ---";
 
       document.getElementById("returnBtn").disabled = true;
+      document.getElementById("deleteItemBtn").disabled = true;
       document.getElementById("addItemBtn").disabled = !selectedPlayer;
+      document.getElementById("managePCoinsBtn").disabled = !selectedPlayer;
 
       if (selectedPlayer) {
+        fetch(`https://${GetParentResourceName()}/getPCoins`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            discordId: selectedPlayer.discord
+          }),
+        });
+
         loadPlayerItems(
           "online",
           selectedPlayer.license,
           selectedPlayer.discord
         );
+      } else {
+        document.getElementById("selectedPlayerCoins").innerHTML =
+          '<i class="fas fa-coins"></i> pCoins: ---';
+        currentPCoins = 0;
       }
     }
 
@@ -359,7 +400,17 @@
       ).textContent = `Offline | ${character.slotLabel}`;
 
       document.getElementById("returnBtn").disabled = true;
+      document.getElementById("deleteItemBtn").disabled = true;
       document.getElementById("addItemBtn").disabled = false;
+      document.getElementById("managePCoinsBtn").disabled = false;
+
+      fetch(`https://${GetParentResourceName()}/getPCoins`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discordId: character.discord
+        }),
+      });
 
       loadPlayerItems("offline", character.identifier, character.discord);
     }
@@ -409,11 +460,9 @@
         card.className = "item-card";
         card.dataset.itemId = item.id || "";
         card.innerHTML = `
-                    <div class="item-icon"><i class="fas fa-car"></i></div>
-                    <div class="item-name">${item.name || "Item desconocido"
-          }</div>
-                    <div class="item-model">${item.model || "Modelo desconocido"
-          }</div>
+                    <div class="item-icon"><i class="${item.icon || 'fas fa-box'}"></i></div>
+                    <div class="item-name">${item.type || "Item"}</div>
+                    <div class="item-model">${item.name || "Item desconocido"}</div>
                     <div class="item-meta">
                         <span>x${item.amount || 1}</span>
                         <span>${item.date || "---"}</span>
@@ -433,6 +482,7 @@
 
       selectedItem = itemsList.find((i) => i.id === itemId) || null;
       document.getElementById("returnBtn").disabled = !selectedItem;
+      document.getElementById("deleteItemBtn").disabled = !selectedItem;
     }
 
     function loadProducts(products) {
@@ -515,18 +565,15 @@
         div.className = "product-item";
         div.dataset.productId = product.id;
         div.innerHTML = `
-                    <div class="product-header">
-                        <div class="product-title">${product.title}</div>
-                        <div class="product-type">${product.type}</div>
-                    </div>
-                    ${product.model
-            ? `<div class="product-model">${product.model}</div>`
-            : ""
-          }
-                    ${product.description
+                    <div class="product-list-icon"><i class="${product.icon || 'fas fa-box'}"></i></div>
+                    <div class="product-details">
+                        <div class="product-title">${product.type}</div>
+                        <div class="product-model">${product.title}</div>
+                        ${product.description
             ? `<div class="product-description" title="${product.description}">${product.description}</div>`
             : ""
           }
+                    </div>
                 `;
         div.addEventListener("click", () => selectProduct(product));
         list.appendChild(div);
@@ -570,24 +617,6 @@
       document.getElementById("addItemBtn").disabled = true;
     });
 
-    document.getElementById("manualModeBtn").addEventListener("click", () => {
-      isManualMode = true;
-      document.getElementById("manualModeBtn").classList.add("active");
-      document.getElementById("selectorModeBtn").classList.remove("active");
-      document.getElementById("manualMode").style.display = "block";
-      document.getElementById("selectorMode").style.display = "none";
-      selectedProduct = null;
-    });
-
-    document
-      .getElementById("selectorModeBtn")
-      .addEventListener("click", () => {
-        isManualMode = false;
-        document.getElementById("selectorModeBtn").classList.add("active");
-        document.getElementById("manualModeBtn").classList.remove("active");
-        document.getElementById("manualMode").style.display = "none";
-        document.getElementById("selectorMode").style.display = "block";
-      });
 
     document.getElementById("searchProduct").addEventListener("input", () => {
       loadProducts(allProducts);
@@ -635,44 +664,26 @@
 
       let itemData;
 
-      if (isManualMode) {
-        itemData = {
-          title: document.getElementById("itemTitle").value.trim(),
-          type: document.getElementById("itemType").value,
-          model: document.getElementById("itemModel").value.trim(),
-          amount: parseInt(document.getElementById("itemAmount").value) || 1,
-          description: document
-            .getElementById("itemDescription")
-            .value.trim(),
-          playerIdentifier: selectedPlayer.license,
-        };
-
-        if (!itemData.title) {
-          alert("Por favor ingresa un título para el item");
-          return;
-        }
-      } else {
-        if (!selectedProduct) {
-          alert("Por favor selecciona un producto de la lista");
-          return;
-        }
-
-        console.log(selectedProduct.id);
-
-        itemData = {
-          itemId: selectedProduct.id,
-          title: selectedProduct.title,
-          type: selectedProduct.type,
-          model: selectedProduct.model || "",
-          amount:
-            parseInt(document.getElementById("productAmount").value) || 1,
-          description: selectedProduct.description || "",
-          image: selectedProduct.image || "",
-          category: selectedProduct.category || "",
-          playerIdentifier: selectedPlayer.license,
-          discordId: selectedPlayer.discord,
-        };
+      if (!selectedProduct) {
+        alert("Por favor selecciona un producto de la lista");
+        return;
       }
+
+      console.log(selectedProduct.id);
+
+      itemData = {
+        itemId: selectedProduct.id,
+        title: selectedProduct.title,
+        type: selectedProduct.type,
+        model: selectedProduct.model || "",
+        amount:
+          parseInt(document.getElementById("productAmount").value) || 1,
+        description: selectedProduct.description || "",
+        image: selectedProduct.image || "",
+        category: selectedProduct.category || "",
+        playerIdentifier: selectedPlayer.license,
+        discordId: selectedPlayer.discord,
+      };
 
       const modal = document.getElementById("addItemModal");
       document.getElementById(
@@ -702,10 +713,35 @@
     document.getElementById("returnBtn").addEventListener("click", () => {
       if (!selectedItem || !selectedPlayer) return;
 
-      document.getElementById(
-        "confirmMessage"
-      ).textContent = `¿Confirmas la devolución de "${selectedItem.name || "Item desconocido"
-        }" (x${selectedItem.amount || 1}) a ${selectedPlayer.name || "---"}?`;
+      const container = document.getElementById("dynamicInputs");
+      container.innerHTML = "";
+
+      const lowerName = (selectedItem.name || "").toLowerCase();
+
+      if (lowerName === "vehículo exclusivo" || lowerName === "copia vehículo exclusivo") {
+        container.innerHTML = `
+                <div class="form-group">
+                    <label>Modelo del vehículo</label>
+                    <input type="text" id="returnModel" placeholder="Ej: gblod4" value="${selectedItem.model || ''}">
+                </div>`;
+      } else if (selectedItem.category === "Verificación" || lowerName.includes("verificación")) {
+        container.innerHTML = `
+                <div class="form-group">
+                    <label>Usuario a verificar</label>
+                    <input type="text" id="returnUsername" placeholder="Ej: travis007">
+                </div>`;
+      } else if (lowerName === "matrícula personalizada") {
+        container.innerHTML = `
+                <div class="form-group">
+                    <label>Matrícula Actual</label>
+                    <input type="text" id="returnOldPlate" placeholder="Ej: 28ALC098">
+                </div>
+                <div class="form-group">
+                    <label>Nueva Matrícula</label>
+                    <input type="text" id="returnNewPlate" placeholder="Ej: PLOMO">
+                </div>`;
+      }
+
       document.getElementById("confirmModal").style.display = "flex";
     });
 
@@ -720,6 +756,11 @@
     document.getElementById("confirmReturn").addEventListener("click", () => {
       const reason = document.getElementById("returnReason").value;
 
+      const modelInput = document.getElementById("returnModel");
+      const usernameInput = document.getElementById("returnUsername");
+      const oldPlateInput = document.getElementById("returnOldPlate");
+      const newPlateInput = document.getElementById("returnNewPlate");
+
       if (selectedPlayer && selectedItem) {
         fetch(`https://${GetParentResourceName()}/returnItem`, {
           method: "POST",
@@ -730,6 +771,10 @@
             itemId: selectedItem.id,
             reason: reason || "Sin motivo",
             isOffline: selectedPlayer.isOffline || false,
+            model: modelInput ? modelInput.value : null,
+            username: usernameInput ? usernameInput.value : null,
+            oldPlate: oldPlateInput ? oldPlateInput.value : null,
+            newPlate: newPlateInput ? newPlateInput.value : null
           }),
         });
       }
@@ -760,6 +805,121 @@
           );
         }
       }
+    });
+
+    document.getElementById("managePCoinsBtn").addEventListener("click", () => {
+      if (!selectedPlayer) return;
+
+      document.getElementById("pCoinsPlayerInfo").textContent =
+        `Gestionar pCoins para: ${selectedPlayer.name}`;
+      document.getElementById("currentPCoins").textContent = currentPCoins;
+      document.getElementById("pCoinsAmount").value = "100";
+      document.getElementById("pCoinsReason").value = "";
+      document.getElementById("pCoinsModal").style.display = "flex";
+    });
+
+    document.getElementById("closePCoinsModal").addEventListener("click", () => {
+      document.getElementById("pCoinsModal").style.display = "none";
+    });
+
+    document.getElementById("cancelPCoins").addEventListener("click", () => {
+      document.getElementById("pCoinsModal").style.display = "none";
+    });
+
+    document.getElementById("addPCoins").addEventListener("click", () => {
+      if (!selectedPlayer) return;
+
+      const amount = parseInt(document.getElementById("pCoinsAmount").value) || 0;
+      const reason = document.getElementById("pCoinsReason").value.trim();
+
+      if (amount <= 0) {
+        alert("Por favor ingresa una cantidad válida");
+        return;
+      }
+
+      fetch(`https://${GetParentResourceName()}/managePCoins`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discordId: selectedPlayer.discord,
+          playerIdentifier: selectedPlayer.license,
+          amount: amount,
+          action: "add",
+          reason: reason || "Sin motivo"
+        }),
+      });
+
+      document.getElementById("pCoinsModal").style.display = "none";
+    });
+
+    document.getElementById("removePCoins").addEventListener("click", () => {
+      if (!selectedPlayer) return;
+
+      const amount = parseInt(document.getElementById("pCoinsAmount").value) || 0;
+      const reason = document.getElementById("pCoinsReason").value.trim();
+
+      if (amount <= 0) {
+        alert("Por favor ingresa una cantidad válida");
+        return;
+      }
+
+      if (amount > currentPCoins) {
+        alert(`No puedes quitar más pCoins de los que tiene el jugador (${currentPCoins})`);
+        return;
+      }
+
+      fetch(`https://${GetParentResourceName()}/managePCoins`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          discordId: selectedPlayer.discord,
+          playerIdentifier: selectedPlayer.license,
+          amount: amount,
+          action: "remove",
+          reason: reason || "Sin motivo"
+        }),
+      });
+
+      document.getElementById("pCoinsModal").style.display = "none";
+    });
+
+    document.getElementById("deleteItemBtn").addEventListener("click", () => {
+      if (!selectedItem || !selectedPlayer) return;
+
+      document.getElementById("deleteItemMessage").textContent =
+        `¿Estás seguro de que deseas eliminar "${selectedItem.name || "Item desconocido"}" (x${selectedItem.amount || 1}) de ${selectedPlayer.name}?`;
+      document.getElementById("deleteItemReason").value = "";
+      document.getElementById("deleteItemModal").style.display = "flex";
+    });
+
+    document.getElementById("closeDeleteModal").addEventListener("click", () => {
+      document.getElementById("deleteItemModal").style.display = "none";
+    });
+
+    document.getElementById("cancelDeleteItem").addEventListener("click", () => {
+      document.getElementById("deleteItemModal").style.display = "none";
+    });
+
+    document.getElementById("confirmDeleteItem").addEventListener("click", () => {
+      if (!selectedItem || !selectedPlayer) return;
+
+      const reason = document.getElementById("deleteItemReason").value.trim();
+
+      fetch(`https://${GetParentResourceName()}/deleteItem`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          playerIdentifier: selectedPlayer.license,
+          discordId: selectedPlayer.discord,
+          itemId: selectedItem.id,
+          reason: reason || "Sin motivo"
+        }),
+      });
+
+      document.getElementById("deleteItemModal").style.display = "none";
+      selectedItem = null;
+      document.getElementById("returnBtn").disabled = true;
+      document.getElementById("deleteItemBtn").disabled = true;
     });
 
     window.addEventListener("message", (event) => {
@@ -796,18 +956,11 @@
         addBtn.innerHTML = '<i class="fas fa-plus"></i> Añadir Item';
 
         if (data.data && data.data.success) {
-          if (isManualMode) {
-            document.getElementById("itemTitle").value = "";
-            document.getElementById("itemModel").value = "";
-            document.getElementById("itemAmount").value = "1";
-            document.getElementById("itemDescription").value = "";
-          } else {
-            document.getElementById("productAmount").value = "1";
-            selectedProduct = null;
-            document
-              .querySelectorAll(".product-item")
-              .forEach((i) => i.classList.remove("selected"));
-          }
+          document.getElementById("productAmount").value = "1";
+          selectedProduct = null;
+          document
+            .querySelectorAll(".product-item")
+            .forEach((i) => i.classList.remove("selected"));
 
           if (selectedPlayer && selectedPlayer.isOffline) {
             loadPlayerItems("offline", selectedPlayer.license);
@@ -833,7 +986,7 @@
           div.innerHTML = `
                         <div style="font-weight: 700; margin-bottom: 4px;">${char.firstname} ${char.lastname}</div>
                         <div style="font-size: 11px; color: rgba(255,255,255,0.6);">
-                            ${char.slotLabel} | Items: ${char.items.length}
+                            ${char.slotLabel} | Artículos: ${char.items.length}
                         </div>
                     `;
           div.addEventListener("click", () => selectOfflineCharacter(char));
@@ -845,6 +998,34 @@
 
       if (data.type === "offlineItems") {
         displayItems(data.items);
+      }
+
+      if (data.type === "pCoinsData") {
+        currentPCoins = data.pCoins || 0;
+        document.getElementById("selectedPlayerCoins").innerHTML =
+          `<i class="fas fa-coins"></i> pCoins: ${currentPCoins.toLocaleString()}`;
+      }
+
+      if (data.type === "pCoinsUpdated") {
+        if (data.success) {
+          currentPCoins = data.newBalance || 0;
+          document.getElementById("selectedPlayerCoins").innerHTML =
+            `<i class="fas fa-coins"></i> pCoins: ${currentPCoins.toLocaleString()}`;
+        }
+      }
+
+      if (data.type === "itemDeleted") {
+        if (data.success && selectedPlayer) {
+          selectedItem = null;
+          document.getElementById("returnBtn").disabled = true;
+          document.getElementById("deleteItemBtn").disabled = true;
+
+          if (selectedPlayer.isOffline) {
+            loadPlayerItems("offline", selectedPlayer.license, selectedPlayer.discord);
+          } else {
+            loadPlayerItems("online", selectedPlayer.license, selectedPlayer.discord);
+          }
+        }
       }
     });
 

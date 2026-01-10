@@ -38,9 +38,6 @@ else
     print('===NO SUPPORTED FRAMEWORK FOUND===')
 end
 
-local DISCORD_WEBHOOK =
-"https://discord.com/api/webhooks/1362732245181268008/itWD66HWiWREvISdm6hjpjplzZ3EZlLLVNPQzTv0nDWiIAzkCPF92cHukUgfs3KP23mR"
-
 function GetDiscordId(src)
     for _, id in ipairs(GetPlayerIdentifiers(src)) do
         if id:find("discord:") then
@@ -85,74 +82,17 @@ function GetIdentifiersAll(src)
     return identifiers
 end
 
-function AddOwnedVehicle(source, plate, model)
-    local xPlayer = GetPlayer(source)
-    MySQL.Async.execute("INSERT INTO owned_vehicles (owner, plate, vehicle) VALUES (@owner, @plate, @vehicle);", {
-        ['@owner'] = xPlayer.identifier,
-        ['@plate'] = string.upper(plate),
-        ['@vehicle'] = json.encode({
-            plate = string.upper(plate),
-            model = joaat(model),
-        }),
-    })
-end
-
-function SendDiscordLog(data)
-    local embed = {
-        {
-            color = 15158332, -- rojo
-            title = "📦 Devolución de Item",
-            description = "Un administrador ha devuelto un item a un jugador.",
-            fields = {
-                {
-                    name = "👮 Admin",
-                    value = string.format(
-                        "**ID:** %s\n**Discord:** <@%s>",
-                        data.adminId,
-                        data.adminDiscord
-                    ),
-                    inline = true
-                },
-                {
-                    name = "🎯 Jugador",
-                    value = string.format(
-                        "**ID:** %s\n**Identifier:** %s",
-                        data.targetId,
-                        data.targetIdentifier
-                    ),
-                    inline = true
-                },
-                {
-                    name = "📦 Item",
-                    value = string.format(
-                        "**Nombre:** %s\n**Tipo:** %s\n**Modelo:** %s\n**Cantidad:** %s\n**Matrícula:** %s",
-                        data.itemTitle,
-                        data.itemType,
-                        data.itemModel,
-                        data.itemAmount,
-                        data.itemPlate
-                    ),
-                    inline = false
-                },
-                {
-                    name = "📝 Motivo",
-                    value = data.reason or "Sin motivo",
-                    inline = false
-                }
-            },
-            footer = {
-                text = os.date("%d/%m/%Y %H:%M:%S")
-            }
-        }
+function AddOwnedVehicle(identifier, plate, model)
+    local vehicleProps = {
+        plate = string.upper(plate),
+        model = joaat(model)
     }
-
-    PerformHttpRequest(
-        DISCORD_WEBHOOK,
-        function() end,
-        "POST",
-        json.encode({ embeds = embed }),
-        { ["Content-Type"] = "application/json" }
-    )
+    
+    MySQL.insert("INSERT INTO owned_vehicles (owner, plate, vehicle) VALUES (?, ?, ?)", {
+        identifier,
+        string.upper(plate),
+        json.encode(vehicleProps)
+    })
 end
 
 function hasPermission(src)
@@ -197,3 +137,25 @@ RegisterNetEvent("devolutions:start", function()
         print(("muhaddil-devolutions: El jugador %s intentó acceder al panel sin permisos."):format(src))
     end
 end)
+
+function UpdateVehiclePlate(identifier, oldPlate, newPlate)
+    local oldPlate = string.upper(oldPlate)
+    local newPlate = string.upper(newPlate)
+
+    MySQL.query("SELECT vehicle FROM owned_vehicles WHERE plate = ? AND owner = ?", {oldPlate, identifier}, function(result)
+        if result and result[1] then
+            local vehicleProps = json.decode(result[1].vehicle)
+            vehicleProps.plate = newPlate
+            
+            MySQL.update("UPDATE owned_vehicles SET plate = ?, vehicle = ? WHERE plate = ? AND owner = ?", {
+                newPlate, json.encode(vehicleProps), oldPlate, identifier
+            }, function(affected)
+                if affected > 0 then
+                    if GetResourceState('jg-mechanic') == 'started' then
+                        pcall(function() exports["jg-mechanic"]:vehiclePlateUpdated(oldPlate, newPlate) end)
+                    end
+                end
+            end)
+        end
+    end)
+end

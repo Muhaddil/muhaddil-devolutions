@@ -12,7 +12,7 @@ function toggleAdminPanel()
     end
 end
 
-RegisterCommand("adminpanel", function()
+RegisterCommand("storepanel", function()
     toggleAdminPanel()
 end, false)
 
@@ -89,3 +89,44 @@ AddEventHandler("admin:productsResult", function(products)
         products = products
     })
 end)
+
+RegisterNUICallback("getPCoins", function(data, cb)
+    TriggerServerEvent("admin:getPCoins", data)
+    cb("ok")
+end)
+
+RegisterNUICallback("managePCoins", function(data, cb)
+    TriggerServerEvent("admin:managePCoins", data)
+    cb("ok")
+end)
+
+RegisterNUICallback("deleteItem", function(data, cb)
+    TriggerServerEvent("admin:deleteItem", data)
+    cb("ok")
+end)
+
+RegisterNetEvent("admin:pCoinsResult")
+AddEventHandler("admin:pCoinsResult", function(data)
+    SendNUIMessage({
+        type = "pCoinsData",
+        pCoins = data.pCoins
+    })
+end)
+
+RegisterNetEvent("admin:pCoinsUpdated")
+AddEventHandler("admin:pCoinsUpdated", function(data)
+    SendNUIMessage({
+        type = "pCoinsUpdated",
+        success = data.success,
+        newBalance = data.newBalance
+    })
+end)
+
+RegisterNetEvent("admin:itemDeleted")
+AddEventHandler("admin:itemDeleted", function(data)
+    SendNUIMessage({
+        type = "itemDeleted",
+        success = data.success
+    })
+end)
+
