@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Sistema de Devoluciones</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      font-family: var(--font-main);
+      color: var(--color-white);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="adminPanel" style="display: none">
+    <div class="tablet-container">
+      <div class="tablet-status">
+        <div class="time">14:30</div>
+      </div>
+      <div class="tablet-header">
+        <div class="logo">
+          <div class="logo-icon"><i class="fas fa-undo-alt"></i></div>
+          <div class="logo-text">
+            <h1>Sistema de Devoluciones</h1>
+            <p>PANEL DE ADMINISTRACIÓN</p>
+          </div>
+        </div>
+      </div>
+      <div class="tablet-body">
+        <div class="sidebar">
+          <div class="player-search">
+            <div class="section-title">
+              <i class="fas fa-users"></i><span>Jugadores</span>
+            </div>
+
+            <div class="mode-toggle">
+              <button class="mode-btn active" id="onlineBtn">
+                <i class="fas fa-circle" style="color: #4caf50"></i> Online
+              </button>
+              <button class="mode-btn" id="offlineBtn">
+                <i class="fas fa-circle" style="color: #666"></i> Offline
+              </button>
+            </div>
+
+            <div id="onlineSearch" class="online-search">
+              <input type="text" id="searchPlayer" placeholder="Buscar jugador online..." />
+            </div>
+
+            <div id="offlineSearch" class="offline-search">
+              <div class="search-input-group">
+                <input type="text" id="searchDiscord" placeholder="ID Discord (ej: 123456789)" />
+                <button id="searchDiscordBtn">
+                  <i class="fas fa-search"></i>
+                </button>
+              </div>
+              <div id="characterSelector" class="character-selector"></div>
+            </div>
+
+            <div class="players-list" id="playersList"></div>
+
+            <div class="add-item-section">
+              <div class="add-item-title">
+                <i class="fas fa-plus-circle"></i> Añadir Item
+              </div>
+
+              <div class="mode-toggle" style="margin-bottom: 15px">
+                <button class="mode-btn active" id="manualModeBtn" disabled>
+                  <i class="fas fa-keyboard"></i> Manual
+                </button>
+                <button class="mode-btn" id="selectorModeBtn">
+                  <i class="fas fa-list"></i> Selector
+                </button>
+              </div>
+
+              <div id="manualMode" style="display: none">
+                <div class="form-row">
+                  <div class="form-field">
+                    <label>Título</label>
+                    <input type="text" id="itemTitle" placeholder="Ej: Ferrari F40" />
+                  </div>
+                  <div class="form-field">
+                    <label>Tipo</label>
+                    <select id="itemType">
+                      <option value="Coche">Coche</option>
+                      <option value="Item">Item</option>
+                      <option value="Dinero">Dinero</option>
+                      <option value="Banco">Banco</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-field">
+                    <label>Modelo/Item</label>
+                    <input type="text" id="itemModel" placeholder="Ej: zentorno / bread" />
+                  </div>
+                  <div class="form-field">
+                    <label>Cantidad</label>
+                    <input type="number" id="itemAmount" value="1" min="1" />
+                  </div>
+                </div>
+
+                <div class="form-field">
+                  <label>Descripción</label>
+                  <textarea id="itemDescription" placeholder="Descripción opcional..."></textarea>
+                </div>
+              </div>
+
+              <div id="selectorMode" style="display: block">
+                <div class="form-field">
+                  <label>Buscar Producto</label>
+                  <input type="text" id="searchProduct" placeholder="Buscar por nombre, modelo o descripción..." />
+                </div>
+
+                <div class="form-field">
+                  <label>Categoría</label>
+                  <select id="filterCategory">
+                    <option value="">Todas las categorías</option>
+                  </select>
+                </div>
+
+                <div class="products-list" id="productsList">
+                  <p style="color: #999; text-align: center; padding: 10px">
+                    Cargando productos...
+                  </p>
+                </div>
+
+                <div class="form-field" style="margin-top: 10px">
+                  <label>Cantidad</label>
+                  <input type="number" id="productAmount" value="1" min="1" />
+                </div>
+              </div>
+
+              <button class="add-item-btn" id="addItemBtn" disabled>
+                <i class="fas fa-plus"></i> Añadir Item
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="main-content">
+          <div class="content-header">
+            <div class="selected-player-info">
+              <div class="player-avatar"><i class="fas fa-user"></i></div>
+              <div class="player-details">
+                <h3 id="selectedPlayerName">Selecciona un jugador</h3>
+                <p id="selectedPlayerInfo">ID: --- | Discord: ---</p>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i>Actualizar
+              </button>
+              <button class="btn btn-primary" id="returnBtn" disabled>
+                <i class="fas fa-undo-alt"></i>Devolver Item
+              </button>
+            </div>
+          </div>
+          <div class="items-container">
+            <div class="items-header">
+              <div class="items-title">Items del Jugador</div>
+              <div class="items-count" id="itemsCount">0 items</div>
+            </div>
+            <div class="items-grid" id="itemsGrid" style="display: none"></div>
+            <div class="no-data" id="noDataState">
+              <i class="fas fa-box-open"></i>
+              <h3>No hay items para mostrar</h3>
+              <p>Selecciona un jugador para ver sus artículos</p>
+            </div>
+            <div class="loading" id="loadingState" style="display: none">
+              <div class="spinner"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="addItemModal">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title">Confirmar Añadir Item</div>
+            <button class="close-modal" id="closeAddItemModal">
+              &times;
+            </button>
+          </div>
+          <div class="modal-body">
+            <p id="addItemMessage"></p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelAddItem">
+              Cancelar
+            </button>
+            <button class="btn btn-primary" id="confirmAddItem">
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="confirmModal">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title">Confirmar Devolución</div>
+            <button class="close-modal" id="closeModal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p id="confirmMessage">
+              ¿Estás seguro de que deseas devolver este item al jugador?
+            </p>
+            <div class="form-group">
+              <label for="returnReason">Motivo de la devolución (opcional)</label>
+              <textarea id="returnReason" rows="3" placeholder="Ej: Item perdido por bug del servidor..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelReturn">
+              Cancelar
+            </button>
+            <button class="btn btn-primary" id="confirmReturn">
+              Confirmar Devolución
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let players = [];
+    let selectedPlayer = null;
+    let selectedItem = null;
+    let isOnlineMode = true;
+    let offlineCharacters = [];
+    let isManualMode = false;
+    let allProducts = [];
+    let selectedProduct = null;
+
+    document.getElementById("manualMode").style.display = "none";
+    document.getElementById("selectorMode").style.display = "block";
+    document.getElementById("manualModeBtn").classList.remove("active");
+    document.getElementById("selectorModeBtn").classList.add("active");
+    document.getElementById("manualModeBtn").disabled = true;
+
+    function updateTabletStatus() {
+      const now = new Date();
+
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const seconds = now.getSeconds().toString().padStart(2, '0');
+
+      document.querySelector('.time').textContent = `${hours}:${minutes}:${seconds}`;
+    }
+
+    updateTabletStatus();
+
+    setInterval(updateTabletStatus, 1000);
+    
+    function loadPlayers() {
+      const list = document.getElementById("playersList");
+      const searchTerm = (
+        document.getElementById("searchPlayer").value || ""
+      ).toLowerCase();
+      list.innerHTML = "";
+
+      if (isOnlineMode) {
+        players
+          .filter(
+            (p) =>
+              (p.license || "").toLowerCase().includes(searchTerm) ||
+              (p.discord || "").toLowerCase().includes(searchTerm) ||
+              (p.name || "").toLowerCase().includes(searchTerm)
+          )
+          .forEach((player) => {
+            const div = document.createElement("div");
+            div.className = "player-item";
+            div.dataset.playerId = player.id || "";
+            div.innerHTML = `<div class="player-name">${player.name || "---"
+              }</div>
+                           <div class="player-id">ID: ${player.id || "---"
+              } | Discord: ${player.discord || "---"}</div>
+                           <div class="player-id">Artículos: ${(player.items || []).length
+              }</div>`;
+            div.addEventListener("click", () => selectPlayer(player.id));
+            list.appendChild(div);
+          });
+      }
+    }
+
+    function selectPlayer(playerId) {
+      document
+        .querySelectorAll(".player-item")
+        .forEach((i) => i.classList.remove("selected"));
+      const element = document.querySelector(
+        `[data-player-id="${playerId}"]`
+      );
+      if (element) element.classList.add("selected");
+
+      selectedPlayer = players.find((p) => p.id === playerId) || null;
+      selectedItem = null;
+
+      document.getElementById("selectedPlayerName").textContent =
+        (selectedPlayer && selectedPlayer.name) || "Selecciona un jugador";
+      document.getElementById("selectedPlayerInfo").textContent =
+        selectedPlayer
+          ? `ID: ${selectedPlayer.id || "---"} | Discord: ${selectedPlayer.discord || "---"
+          }`
+          : "ID: --- | Discord: ---";
+
+      document.getElementById("returnBtn").disabled = true;
+      document.getElementById("addItemBtn").disabled = !selectedPlayer;
+
+      if (selectedPlayer) {
+        loadPlayerItems(
+          "online",
+          selectedPlayer.license,
+          selectedPlayer.discord
+        );
+      }
+    }
+
+    function selectOfflineCharacter(character) {
+      document
+        .querySelectorAll(".character-item")
+        .forEach((i) => i.classList.remove("selected"));
+      event.target.closest(".character-item").classList.add("selected");
+
+      selectedPlayer = {
+        id: "offline",
+        name: `${character.firstname} ${character.lastname}`,
+        license: character.identifier,
+        discord: character.discord || "---",
+        items: character.items || [],
+        isOffline: true,
+      };
+
+      selectedItem = null;
+
+      document.getElementById("selectedPlayerName").textContent =
+        selectedPlayer.name;
+      document.getElementById(
+        "selectedPlayerInfo"
+      ).textContent = `Offline | ${character.slotLabel}`;
+
+      document.getElementById("returnBtn").disabled = true;
+      document.getElementById("addItemBtn").disabled = false;
+
+      loadPlayerItems("offline", character.identifier, character.discord);
+    }
+
+    function loadPlayerItems(playerId, offlineIdentifier, discordId) {
+      const grid = document.getElementById("itemsGrid");
+      const noData = document.getElementById("noDataState");
+      const loading = document.getElementById("loadingState");
+      const count = document.getElementById("itemsCount");
+
+      grid.style.display = "none";
+      noData.style.display = "none";
+      loading.style.display = "flex";
+
+      fetch(`https://${GetParentResourceName()}/getOfflineItems`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: offlineIdentifier,
+          discordId: discordId,
+        }),
+      });
+    }
+
+    function displayItems(items) {
+      const grid = document.getElementById("itemsGrid");
+      const noData = document.getElementById("noDataState");
+      const count = document.getElementById("itemsCount");
+      const loading = document.getElementById("loadingState");
+
+      loading.style.display = "none";
+
+      if (!items || items.length === 0) {
+        grid.style.display = "none";
+        noData.style.display = "flex";
+        count.textContent = "0 items";
+        return;
+      }
+
+      grid.style.display = "grid";
+      noData.style.display = "none";
+      count.textContent = `${items.length} items`;
+      grid.innerHTML = "";
+
+      items.forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "item-card";
+        card.dataset.itemId = item.id || "";
+        card.innerHTML = `
+                    <div class="item-icon"><i class="fas fa-car"></i></div>
+                    <div class="item-name">${item.name || "Item desconocido"
+          }</div>
+                    <div class="item-model">${item.model || "Modelo desconocido"
+          }</div>
+                    <div class="item-meta">
+                        <span>x${item.amount || 1}</span>
+                        <span>${item.date || "---"}</span>
+                    </div>
+                `;
+        card.addEventListener("click", () => selectItem(item.id, items));
+        grid.appendChild(card);
+      });
+    }
+
+    function selectItem(itemId, itemsList) {
+      document
+        .querySelectorAll(".item-card")
+        .forEach((c) => c.classList.remove("selected"));
+      const element = document.querySelector(`[data-item-id="${itemId}"]`);
+      if (element) element.classList.add("selected");
+
+      selectedItem = itemsList.find((i) => i.id === itemId) || null;
+      document.getElementById("returnBtn").disabled = !selectedItem;
+    }
+
+    function loadProducts(products) {
+      allProducts = products;
+      const list = document.getElementById("productsList");
+      const searchTerm = document
+        .getElementById("searchProduct")
+        .value.toLowerCase();
+      const categoryFilter = document.getElementById("filterCategory").value;
+
+      const categories = [
+        "",
+        ...new Set(products.map((p) => p.category).filter((c) => c)),
+      ];
+      const categorySelect = document.getElementById("filterCategory");
+      const currentValue = categorySelect.value;
+
+      categorySelect.innerHTML = "";
+      categories.forEach((cat) => {
+        const option = document.createElement("option");
+        option.value = cat;
+        option.textContent = cat || "Todas las categorías";
+        categorySelect.appendChild(option);
+      });
+      categorySelect.value = currentValue || "";
+
+      const filtered = products.filter((p) => {
+        const matchesSearch =
+          p.title.toLowerCase().includes(searchTerm) ||
+          (p.description &&
+            p.description.toLowerCase().includes(searchTerm)) ||
+          (p.model && p.model.toLowerCase().includes(searchTerm));
+        const matchesCategory =
+          !categoryFilter || p.category === categoryFilter;
+        return matchesSearch && matchesCategory;
+      });
+
+      list.innerHTML = "";
+
+      if (filtered.length === 0) {
+        list.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: rgba(255,255,255,0.5);">
+                        <i class="fas fa-search" style="font-size: 24px; margin-bottom: 10px; opacity: 0.5;"></i>
+                        <p style="font-size: 12px;">No se encontraron productos</p>
+                        <p style="font-size: 11px; margin-top: 5px; opacity: 0.7;">Prueba con otros términos de búsqueda</p>
+                    </div>`;
+        return;
+      }
+
+      filtered.sort((a, b) => {
+        if (a.category && b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        return a.title.localeCompare(b.title);
+      });
+
+      let currentCategory = null;
+
+      filtered.forEach((product) => {
+        if (product.category !== currentCategory && product.category) {
+          currentCategory = product.category;
+          const categoryHeader = document.createElement("div");
+          categoryHeader.className = "category-header";
+          categoryHeader.style.cssText = `
+                        background: rgba(185, 34, 34, 0.1);
+                        color: var(--color-red);
+                        padding: 6px 10px;
+                        margin: 10px -10px 8px -10px;
+                        font-size: 11px;
+                        font-weight: 700;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        border-left: 3px solid var(--color-red);
+                    `;
+          categoryHeader.textContent = currentCategory;
+          list.appendChild(categoryHeader);
+        }
+
+        const div = document.createElement("div");
+        div.className = "product-item";
+        div.dataset.productId = product.id;
+        div.innerHTML = `
+                    <div class="product-header">
+                        <div class="product-title">${product.title}</div>
+                        <div class="product-type">${product.type}</div>
+                    </div>
+                    ${product.model
+            ? `<div class="product-model">${product.model}</div>`
+            : ""
+          }
+                    ${product.description
+            ? `<div class="product-description" title="${product.description}">${product.description}</div>`
+            : ""
+          }
+                `;
+        div.addEventListener("click", () => selectProduct(product));
+        list.appendChild(div);
+      });
+    }
+
+    function selectProduct(product) {
+      selectedProduct = product;
+      document
+        .querySelectorAll(".product-item")
+        .forEach((i) => i.classList.remove("selected"));
+      const element = document.querySelector(
+        `[data-product-id="${product.id}"]`
+      );
+      if (element) element.classList.add("selected");
+
+      document.getElementById("productAmount").value =
+        product.defaultAmount || 1;
+    }
+
+    document.getElementById("onlineBtn").addEventListener("click", () => {
+      isOnlineMode = true;
+      document.getElementById("onlineBtn").classList.add("active");
+      document.getElementById("offlineBtn").classList.remove("active");
+      document.getElementById("onlineSearch").style.display = "block";
+      document.getElementById("offlineSearch").classList.remove("active");
+      document.getElementById("playersList").style.display = "block";
+      selectedPlayer = null;
+      document.getElementById("addItemBtn").disabled = true;
+      loadPlayers();
+    });
+
+    document.getElementById("offlineBtn").addEventListener("click", () => {
+      isOnlineMode = false;
+      document.getElementById("offlineBtn").classList.add("active");
+      document.getElementById("onlineBtn").classList.remove("active");
+      document.getElementById("onlineSearch").style.display = "none";
+      document.getElementById("offlineSearch").classList.add("active");
+      document.getElementById("playersList").style.display = "none";
+      selectedPlayer = null;
+      document.getElementById("addItemBtn").disabled = true;
+    });
+
+    document.getElementById("manualModeBtn").addEventListener("click", () => {
+      isManualMode = true;
+      document.getElementById("manualModeBtn").classList.add("active");
+      document.getElementById("selectorModeBtn").classList.remove("active");
+      document.getElementById("manualMode").style.display = "block";
+      document.getElementById("selectorMode").style.display = "none";
+      selectedProduct = null;
+    });
+
+    document
+      .getElementById("selectorModeBtn")
+      .addEventListener("click", () => {
+        isManualMode = false;
+        document.getElementById("selectorModeBtn").classList.add("active");
+        document.getElementById("manualModeBtn").classList.remove("active");
+        document.getElementById("manualMode").style.display = "none";
+        document.getElementById("selectorMode").style.display = "block";
+      });
+
+    document.getElementById("searchProduct").addEventListener("input", () => {
+      loadProducts(allProducts);
+    });
+
+    document
+      .getElementById("filterCategory")
+      .addEventListener("change", () => {
+        loadProducts(allProducts);
+      });
+
+    document
+      .getElementById("searchProduct")
+      .addEventListener("dblclick", (e) => {
+        e.target.value = "";
+        loadProducts(allProducts);
+      });
+
+    document
+      .getElementById("searchProduct")
+      .addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          e.target.value = "";
+          loadProducts(allProducts);
+        }
+      });
+
+    document
+      .getElementById("searchDiscordBtn")
+      .addEventListener("click", () => {
+        const discordId = document
+          .getElementById("searchDiscord")
+          .value.trim();
+        if (!discordId) return;
+
+        fetch(`https://${GetParentResourceName()}/searchOfflinePlayer`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ discordId: discordId }),
+        });
+      });
+
+    document.getElementById("addItemBtn").addEventListener("click", () => {
+      if (!selectedPlayer) return;
+
+      let itemData;
+
+      if (isManualMode) {
+        itemData = {
+          title: document.getElementById("itemTitle").value.trim(),
+          type: document.getElementById("itemType").value,
+          model: document.getElementById("itemModel").value.trim(),
+          amount: parseInt(document.getElementById("itemAmount").value) || 1,
+          description: document
+            .getElementById("itemDescription")
+            .value.trim(),
+          playerIdentifier: selectedPlayer.license,
+        };
+
+        if (!itemData.title) {
+          alert("Por favor ingresa un título para el item");
+          return;
+        }
+      } else {
+        if (!selectedProduct) {
+          alert("Por favor selecciona un producto de la lista");
+          return;
+        }
+
+        console.log(selectedProduct.id);
+
+        itemData = {
+          itemId: selectedProduct.id,
+          title: selectedProduct.title,
+          type: selectedProduct.type,
+          model: selectedProduct.model || "",
+          amount:
+            parseInt(document.getElementById("productAmount").value) || 1,
+          description: selectedProduct.description || "",
+          image: selectedProduct.image || "",
+          category: selectedProduct.category || "",
+          playerIdentifier: selectedPlayer.license,
+          discordId: selectedPlayer.discord,
+        };
+      }
+
+      const modal = document.getElementById("addItemModal");
+      document.getElementById(
+        "addItemMessage"
+      ).textContent = `¿Añadir ${itemData.amount}x "${itemData.title}" (${itemData.type}) a ${selectedPlayer.name}?`;
+      modal.style.display = "flex";
+
+      document.getElementById("cancelAddItem").onclick = () => {
+        modal.style.display = "none";
+      };
+
+      document.getElementById("confirmAddItem").onclick = () => {
+        modal.style.display = "none";
+        const addBtn = document.getElementById("addItemBtn");
+        addBtn.disabled = true;
+        addBtn.innerHTML =
+          '<i class="fas fa-spinner fa-spin"></i> Añadiendo...';
+
+        fetch(`https://${GetParentResourceName()}/addItem`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(itemData),
+        });
+      };
+    });
+
+    document.getElementById("returnBtn").addEventListener("click", () => {
+      if (!selectedItem || !selectedPlayer) return;
+
+      document.getElementById(
+        "confirmMessage"
+      ).textContent = `¿Confirmas la devolución de "${selectedItem.name || "Item desconocido"
+        }" (x${selectedItem.amount || 1}) a ${selectedPlayer.name || "---"}?`;
+      document.getElementById("confirmModal").style.display = "flex";
+    });
+
+    document.getElementById("closeModal").addEventListener("click", () => {
+      document.getElementById("confirmModal").style.display = "none";
+    });
+
+    document.getElementById("cancelReturn").addEventListener("click", () => {
+      document.getElementById("confirmModal").style.display = "none";
+    });
+
+    document.getElementById("confirmReturn").addEventListener("click", () => {
+      const reason = document.getElementById("returnReason").value;
+
+      if (selectedPlayer && selectedItem) {
+        fetch(`https://${GetParentResourceName()}/returnItem`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            playerIdentifier: selectedPlayer.license,
+            discordId: selectedPlayer.discord,
+            itemId: selectedItem.id,
+            reason: reason || "Sin motivo",
+            isOffline: selectedPlayer.isOffline || false,
+          }),
+        });
+      }
+
+      document.getElementById("confirmModal").style.display = "none";
+      document.getElementById("returnReason").value = "";
+    });
+
+    document
+      .getElementById("searchPlayer")
+      .addEventListener("input", loadPlayers);
+
+    document.getElementById("refreshBtn").addEventListener("click", () => {
+      if (!selectedPlayer && players.length > 0) {
+        selectPlayer(players[0].id);
+      } else if (selectedPlayer) {
+        if (selectedPlayer.isOffline) {
+          loadPlayerItems(
+            "offline",
+            selectedPlayer.license,
+            selectedPlayer.discord
+          );
+        } else {
+          loadPlayerItems(
+            "online",
+            selectedPlayer.license,
+            selectedPlayer.discord
+          );
+        }
+      }
+    });
+
+    window.addEventListener("message", (event) => {
+      const data = event.data;
+
+      if (data.type === "ui") {
+        document.getElementById("adminPanel").style.display = data.status
+          ? "block"
+          : "none";
+      }
+
+      if (data.type === "playersData") {
+        players = data.players || [];
+        loadPlayers();
+
+        if (selectedPlayer && !selectedPlayer.isOffline) {
+          const updatedPlayer = players.find(
+            (p) => p.license === selectedPlayer.license
+          );
+          if (updatedPlayer) {
+            selectedPlayer = updatedPlayer;
+            displayItems(updatedPlayer.items);
+          }
+        }
+      }
+
+      if (data.type === "productsData") {
+        loadProducts(data.products || []);
+      }
+
+      if (data.type === "itemAdded") {
+        const addBtn = document.getElementById("addItemBtn");
+        addBtn.disabled = false;
+        addBtn.innerHTML = '<i class="fas fa-plus"></i> Añadir Item';
+
+        if (data.data && data.data.success) {
+          if (isManualMode) {
+            document.getElementById("itemTitle").value = "";
+            document.getElementById("itemModel").value = "";
+            document.getElementById("itemAmount").value = "1";
+            document.getElementById("itemDescription").value = "";
+          } else {
+            document.getElementById("productAmount").value = "1";
+            selectedProduct = null;
+            document
+              .querySelectorAll(".product-item")
+              .forEach((i) => i.classList.remove("selected"));
+          }
+
+          if (selectedPlayer && selectedPlayer.isOffline) {
+            loadPlayerItems("offline", selectedPlayer.license);
+          }
+        }
+      }
+
+      if (data.type === "searchResult") {
+        const result = data.data;
+        const selector = document.getElementById("characterSelector");
+        selector.innerHTML = "";
+
+        if (!result.characters || result.characters.length === 0) {
+          selector.innerHTML =
+            '<p style="color: #999; padding: 10px; text-align: center;">No se encontraron personajes</p>';
+          selector.classList.add("active");
+          return;
+        }
+
+        result.characters.forEach((char) => {
+          const div = document.createElement("div");
+          div.className = "character-item";
+          div.innerHTML = `
+                        <div style="font-weight: 700; margin-bottom: 4px;">${char.firstname} ${char.lastname}</div>
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.6);">
+                            ${char.slotLabel} | Items: ${char.items.length}
+                        </div>
+                    `;
+          div.addEventListener("click", () => selectOfflineCharacter(char));
+          selector.appendChild(div);
+        });
+
+        selector.classList.add("active");
+      }
+
+      if (data.type === "offlineItems") {
+        displayItems(data.items);
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const adminPanel = document.getElementById("adminPanel");
+        const modal = document.getElementById("confirmModal");
+
+        if (adminPanel.style.display !== "none") {
+          if (modal.style.display === "flex") {
+            modal.style.display = "none";
+          } else {
+            adminPanel.style.display = "none";
+            fetch(`https://${GetParentResourceName()}/closePanel`, {
+              method: "POST",
+              body: JSON.stringify({}),
+            });
+          }
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS muhaddil_devolutions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    player_identifier VARCHAR(255) NOT NULL,
+    item_id VARCHAR(255) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    type VARCHAR(100),
+    model VARCHAR(100),
+    description LONGTEXT,
+    image LONGTEXT,
+    amount INT NOT NULL DEFAULT 1,
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
