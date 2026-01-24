@@ -1,3 +1,9 @@
+local sendAddItemWebhook = "https://discord.com/api/webhooks/your_webhook_url"
+local returnItemWebhook = "https://discord.com/api/webhooks/your_webhook_url"
+local coinsAddWebhook = "https://discord.com/api/webhooks/your_webhook_url"
+local coinsRemoveWebhook = "https://discord.com/api/webhooks/your_webhook_url"
+local deleteItemWebhook = "https://discord.com/api/webhooks/your_webhook_url"
+
 local ESX = nil
 local QBCore = nil
 local ESXVer = Config.ESXVer
@@ -40,66 +46,105 @@ else
 end
 
 function GetPlayerItems(discordId, cb)
-    exports.oxmysql:fetch("SELECT purchases FROM pts_users WHERE discord_id = ?", { discordId }, function(result)
-        local items = {}
+    if Config.StandaloneMode then
+        local query = [[
+            SELECT
+                p.id,
+                p.title,
+                p.description,
+                p.image,
+                p.category,
+                p.model,
+                p.type,
+                p.icon,
+                up.quantity as amount
+            FROM devolutions_user_purchases up
+            JOIN devolutions_products p ON up.product_id = p.id
+            WHERE up.discord_id = ?
+        ]]
 
-        if not result or not result[1] or not result[1].purchases then
-            cb(items)
-            return
-        end
-
-        local success, purchases = pcall(function() return json.decode(result[1].purchases) end)
-        if not success or type(purchases) ~= "table" then
-            cb(items)
-            return
-        end
-
-        local productIds = {}
-        for k, _ in pairs(purchases) do table.insert(productIds, k) end
-        if #productIds == 0 then
-            cb(items)
-            return
-        end
-
-        local quotedIds = {}
-        for _, id in ipairs(productIds) do
-            table.insert(quotedIds, "'" .. id .. "'")
-        end
-        local placeholders = table.concat(quotedIds, ",")
-
-        exports.oxmysql:fetch("SELECT * FROM pts_products WHERE id IN (" .. placeholders .. ")", {}, function(products)
-            if products then
-                for _, product in ipairs(products) do
-                    local quantity = purchases[tostring(product.id)] or 1
-                    local categoryConfig = Config.Categories[product.category] or Config.Categories["default"]
-                    local productType = categoryConfig.type
-                    local productIcon = categoryConfig.icon
-                    local productModel = ""
-
-                    if product.commands then
-                        local _, cmdModel = product.commands:match("pts_(%w+)%s+(.+)")
-                        if cmdModel then
-                            productModel = cmdModel:gsub('^"', ''):gsub('"%]$', '')
-                        end
-                    end
-
+        exports.oxmysql:fetch(query, { discordId }, function(result)
+            local items = {}
+            if result then
+                for _, item in ipairs(result) do
                     table.insert(items, {
-                        id = product.id,
-                        name = product.title,
-                        type = productType,
-                        icon = productIcon,
-                        category = categoryConfig.label,
-                        model = productModel,
-                        description = product.description,
-                        image = product.image,
-                        amount = quantity
+                        id = item.id,
+                        name = item.title,
+                        type = item.type or "Item",
+                        icon = item.icon or "fas fa-box",
+                        category = item.category or "default",
+                        model = item.model or "",
+                        description = item.description or "",
+                        image = item.image or "",
+                        amount = item.amount or 1
                     })
                 end
             end
-
             cb(items)
         end)
-    end)
+    else
+        exports.oxmysql:fetch("SELECT purchases FROM pts_users WHERE discord_id = ?", { discordId }, function(result)
+            local items = {}
+
+            if not result or not result[1] or not result[1].purchases then
+                cb(items)
+                return
+            end
+
+            local success, purchases = pcall(function() return json.decode(result[1].purchases) end)
+            if not success or type(purchases) ~= "table" then
+                cb(items)
+                return
+            end
+
+            local productIds = {}
+            for k, _ in pairs(purchases) do table.insert(productIds, k) end
+            if #productIds == 0 then
+                cb(items)
+                return
+            end
+
+            local quotedIds = {}
+            for _, id in ipairs(productIds) do
+                table.insert(quotedIds, "'" .. id .. "'")
+            end
+            local placeholders = table.concat(quotedIds, ",")
+
+            exports.oxmysql:fetch("SELECT * FROM pts_products WHERE id IN (" .. placeholders .. ")", {},
+                function(products)
+                    if products then
+                        for _, product in ipairs(products) do
+                            local quantity = purchases[tostring(product.id)] or 1
+                            local categoryConfig = Config.Categories[product.category] or Config.Categories["default"]
+                            local productType = categoryConfig.type
+                            local productIcon = categoryConfig.icon
+                            local productModel = ""
+
+                            if product.commands then
+                                local _, cmdModel = product.commands:match("pts_(%w+)%s+(.+)")
+                                if cmdModel then
+                                    productModel = cmdModel:gsub('^"', ''):gsub('"%]$', '')
+                                end
+                            end
+
+                            table.insert(items, {
+                                id = product.id,
+                                name = product.title,
+                                type = productType,
+                                icon = productIcon,
+                                category = categoryConfig.label,
+                                model = productModel,
+                                description = product.description,
+                                image = product.image,
+                                amount = quantity
+                            })
+                        end
+                    end
+
+                    cb(items)
+                end)
+        end)
+    end
 end
 
 -- function GetPlayerItems(playerIdentifier, cb)
@@ -129,66 +174,95 @@ exports('GetPlayerItems', GetPlayerItems)
 function AddPlayerItem(playerIdentifier, itemData, discordId, src)
     playerIdentifier = playerIdentifier or 'a'
 
-    exports.oxmysql:fetch("SELECT purchases FROM pts_users WHERE discord_id = ?", { discordId }, function(result)
-        local purchases = {}
-
-        if result and result[1] and result[1].purchases then
-            local success, decoded = pcall(function() return json.decode(result[1].purchases) end)
-            if success and type(decoded) == "table" then
-                purchases = decoded
-            else
-                print("[AddPlayerItem] Error al decodificar purchases JSON")
+    if Config.StandaloneMode then
+        exports.oxmysql:fetch("SELECT * FROM devolutions_user_purchases WHERE discord_id = ? AND product_id = ?",
+            { discordId, itemData.itemId },
+            function(result)
+                if result and result[1] then
+                    local newQuantity = result[1].quantity + (itemData.amount or 1)
+                    exports.oxmysql:execute("UPDATE devolutions_user_purchases SET quantity = ? WHERE id = ?",
+                        { newQuantity, result[1].id },
+                        function()
+                            sendAddItemWebhook(src, playerIdentifier, discordId, itemData)
+                        end
+                    )
+                else
+                    exports.oxmysql:execute(
+                        "INSERT INTO devolutions_user_purchases (identifier, discord_id, product_id, quantity) VALUES (?, ?, ?, ?)",
+                        { playerIdentifier, discordId, itemData.itemId, itemData.amount or 1 },
+                        function()
+                            sendAddItemWebhook(src, playerIdentifier, discordId, itemData)
+                        end
+                    )
+                end
             end
-        else
-            print("[AddPlayerItem] No se encontraron purchases previos para este jugador")
-        end
+        )
+    else
+        -- Modo pickle-store (código original)
+        exports.oxmysql:fetch("SELECT purchases FROM pts_users WHERE discord_id = ?", { discordId }, function(result)
+            local purchases = {}
 
-        local currentAmount = purchases[tostring(itemData.itemId)] or 0
-        purchases[tostring(itemData.itemId)] = currentAmount + (itemData.amount or 1)
+            if result and result[1] and result[1].purchases then
+                local success, decoded = pcall(function() return json.decode(result[1].purchases) end)
+                if success and type(decoded) == "table" then
+                    purchases = decoded
+                else
+                    print("[AddPlayerItem] Error al decodificar purchases JSON")
+                end
+            else
+                print("[AddPlayerItem] No se encontraron purchases previos para este jugador")
+            end
 
-        local jsonPurchases = json.encode(purchases)
+            local currentAmount = purchases[tostring(itemData.itemId)] or 0
+            purchases[tostring(itemData.itemId)] = currentAmount + (itemData.amount or 1)
 
-        exports.oxmysql:execute("UPDATE pts_users SET purchases = ? WHERE discord_id = ?", { jsonPurchases, discordId },
-            function()
-                local adminDiscord = src and GetDiscordId(src) or "SYSTEM"
-                local adminId = src or "SYSTEM"
-                
-                local webhook = "https://discord.com/api/webhooks/1453808150502310089/Q9wNlL2nFRsojSWCCLvkBkRlMG8yWvCKrSLQ3Lvl0xNPxjgQEJPcagwD-vHjQFKduyCe"
-                local title = "➕ Producto Añadido"
-                local description = "Un administrador ha añadido un producto a un jugador."
-                local color = 15158332
+            local jsonPurchases = json.encode(purchases)
 
-                local embed = {
-                    {
-                        color = color,
-                        title = title,
-                        description = description,
-                        fields = {
-                            {
-                                name = "👮 Admin",
-                                value = string.format("**ID:** %s\n**Discord:** <@%s>", adminId, adminDiscord),
-                                inline = true
-                            },
-                            {
-                                name = "🎯 Jugador",
-                                value = string.format("**Identificador:** %s\n**Discord:** <@%s>", playerIdentifier, discordId),
-                                inline = true
-                            },
-                            {
-                                name = "📦 Item",
-                                value = string.format("**Nombre:** %s\n**Tipo:** %s\n**Modelo:** %s\n**Cantidad:** %s", itemData.title or "N/A", itemData.type or "N/A", itemData.model or "N/A", itemData.amount or 1),
-                                inline = false
-                            },
-                        },
-                        footer = {
-                            text = os.date("%d/%m/%Y %H:%M:%S")
-                        }
-                    }
-                }
+            exports.oxmysql:execute("UPDATE pts_users SET purchases = ? WHERE discord_id = ?",
+                { jsonPurchases, discordId },
+                function()
+                    sendAddItemWebhook(src, playerIdentifier, discordId, itemData)
+                end
+            )
+        end)
+    end
+end
 
-                PerformHttpRequest(webhook, function() end, "POST", json.encode({ embeds = embed }), { ["Content-Type"] = "application/json" })
-            end)
-    end)
+function sendAddItemWebhook(src, playerIdentifier, discordId, itemData)
+    local adminDiscord = src and GetDiscordId(src) or "SYSTEM"
+    local adminId = src or "SYSTEM"
+
+    local embed = {
+        {
+            color = 15158332,
+            title = "➕ Producto Añadido",
+            description = "Un administrador ha añadido un producto a un jugador.",
+            fields = {
+                {
+                    name = "👮 Admin",
+                    value = string.format("**ID:** %s\n**Discord:** <@%s>", adminId, adminDiscord),
+                    inline = true
+                },
+                {
+                    name = "🎯 Jugador",
+                    value = string.format("**Identificador:** %s\n**Discord:** <@%s>", playerIdentifier, discordId),
+                    inline = true
+                },
+                {
+                    name = "📦 Item",
+                    value = string.format("**Nombre:** %s\n**Tipo:** %s\n**Modelo:** %s\n**Cantidad:** %s",
+                        itemData.title or "N/A", itemData.type or "N/A", itemData.model or "N/A", itemData.amount or 1),
+                    inline = false
+                },
+            },
+            footer = {
+                text = os.date("%d/%m/%Y %H:%M:%S")
+            }
+        }
+    }
+
+    PerformHttpRequest(sendAddItemWebhook, function() end, "POST", json.encode({ embeds = embed }),
+        { ["Content-Type"] = "application/json" })
 end
 
 exports('AddPlayerItem', AddPlayerItem)
@@ -256,11 +330,24 @@ end
 
 RegisterServerEvent("admin:getProducts")
 AddEventHandler("admin:getProducts", function(src)
-    exports.oxmysql:fetch("SELECT * FROM pts_products", {},
-        function(result)
-            local products = {}
-            if result then
-                for _, product in ipairs(result) do
+    local query = Config.StandaloneMode and "SELECT * FROM devolutions_products" or "SELECT * FROM pts_products"
+
+    exports.oxmysql:fetch(query, {}, function(result)
+        local products = {}
+        if result then
+            for _, product in ipairs(result) do
+                if Config.StandaloneMode then
+                    table.insert(products, {
+                        id = product.id,
+                        title = product.title,
+                        description = product.description,
+                        image = product.image,
+                        type = product.type or "Item",
+                        icon = product.icon or "fas fa-box",
+                        model = product.model or "",
+                        category = product.category or "default"
+                    })
+                else
                     local categoryConfig = Config.Categories[product.category] or Config.Categories["default"]
                     local productType = categoryConfig.type
                     local productIcon = categoryConfig.icon
@@ -285,9 +372,10 @@ AddEventHandler("admin:getProducts", function(src)
                     })
                 end
             end
+        end
 
-            TriggerClientEvent("admin:productsResult", src, products)
-        end)
+        TriggerClientEvent("admin:productsResult", src, products)
+    end)
 end)
 
 RegisterServerEvent("admin:getPlayers")
@@ -477,30 +565,29 @@ AddEventHandler("admin:returnItem", function(data)
                 plate = GenerateRandomPlate()
                 AddOwnedVehicle(playerIdentifier, plate, finalModel)
             else
-                 print("[RETURN] Falta el modelo para vehículo exclusivo.")
+                print("[RETURN] Falta el modelo para vehículo exclusivo.")
             end
         elseif itemName == "Matrícula personalizada" then
-             local oldPlate = data.oldPlate
-             local newPlate = data.newPlate
-             
-             if oldPlate and newPlate and oldPlate ~= "" and newPlate ~= "" then
-                 UpdateVehiclePlate(playerIdentifier, oldPlate, newPlate)
-             else
-                 print("[RETURN] Faltan datos de matrículas.")
-             end
+            local oldPlate = data.oldPlate
+            local newPlate = data.newPlate
+
+            if oldPlate and newPlate and oldPlate ~= "" and newPlate ~= "" then
+                UpdateVehiclePlate(playerIdentifier, oldPlate, newPlate)
+            else
+                print("[RETURN] Faltan datos de matrículas.")
+            end
         elseif VEHICLE_CATEGORIES[targetItem.category] then
             plate = GenerateRandomPlate()
             AddOwnedVehicle(playerIdentifier, plate, targetItem.model)
         elseif targetItem.category == "Verificación" or (targetItem.name and string.find(string.lower(targetItem.name), "verificación")) then
             local username = data.username
             local network = targetItem.model
-            
+
             if username and username ~= "" and network and network ~= "" then
                 exports["lb-phone"]:ToggleVerified(network, username, true)
             end
         end
 
-        local webhook = "https://discord.com/api/webhooks/1453807495448494171/RnWxQ-kpuIZhI1v0z9hg2uIbxiezRXJsBUkNcDQE6J-a_C2PRHD19T5KstPoFUoT-BFC"
         local title = "📦 Devolución de Item"
         local description = "Un administrador ha devuelto un item a un jugador."
         local color = 15158332
@@ -530,7 +617,8 @@ AddEventHandler("admin:returnItem", function(data)
                     },
                     {
                         name = "🎯 Jugador",
-                        value = string.format("**Identificador:** %s\n**Discord:** <@%s>", playerIdentifier, data.discordId),
+                        value = string.format("**Identificador:** %s\n**Discord:** <@%s>", playerIdentifier,
+                            data.discordId),
                         inline = true
                     },
                     {
@@ -550,7 +638,8 @@ AddEventHandler("admin:returnItem", function(data)
             }
         }
 
-        PerformHttpRequest(webhook, function() end, "POST", json.encode({ embeds = embed }), { ["Content-Type"] = "application/json" })
+        PerformHttpRequest(returnItemWebhook, function() end, "POST", json.encode({ embeds = embed }),
+            { ["Content-Type"] = "application/json" })
 
         Citizen.Wait(200)
         GetAllPlayersWithItems(function(players)
@@ -614,53 +703,53 @@ AddEventHandler("admin:managePCoins", function(data)
 
             exports.oxmysql:execute("UPDATE pts_users SET coins = ? WHERE discord_id = ?", { newBalance, discordId },
                 function()
-                        local adminDiscord = GetDiscordId(src)
-                        
-                        local webhookAdd = "https://discord.com/api/webhooks/1453807657021608190/WxImSCrPI5iP2T9rjftTCNVE8QgLuxjadDs74ZPXiQ_1H39OrtH3OOxi61Y6wAI0xVxN"
-                        local webhookRemove = "https://discord.com/api/webhooks/1453807749338107947/HnXS3FSiLRPND7wDsnKoCY5PqLiRuVPdCFH1dNTcmuYn76sfVimJhjoBCHwZDBAfWKXP"
-                        
-                        local webhook = action == "add" and webhookAdd or webhookRemove
-                        local title = action == "add" and "💰 pCoins Añadidos" or "💸 pCoins Removidos"
-                        local color = action == "add" and 3066993 or 15158332
-                        
-                        local embed = {
-                            {
-                                color = color,
-                                title = title,
-                                description = string.format("Un administrador ha %s pCoins.", action == "add" and "añadido" or "removido"),
-                                fields = {
-                                    {
-                                        name = "👮 Admin",
-                                        value = string.format("**ID:** %s\n**Discord:** <@%s>", src, adminDiscord),
-                                        inline = true
-                                    },
-                                    {
-                                        name = "🎯 Jugador",
-                                        value = string.format("**Identificador:** %s\n**Discord:** <@%s>", playerIdentifier, discordId),
-                                        inline = true
-                                    },
-                                    {
-                                        name = "💰 Cambio",
-                                        value = string.format("**Cantidad:** %s pCoins\n**Balance anterior:** %s\n**Balance nuevo:** %s", 
-                                            amount, currentPCoins, newBalance),
-                                        inline = false
-                                    },
-                                    {
-                                        name = "📝 Motivo",
-                                        value = reason,
-                                        inline = false
-                                    }
+                    local adminDiscord = GetDiscordId(src)
+
+                    local webhook = action == "add" and coinsAddWebhook or coinsRemoveWebhook
+                    local title = action == "add" and "💰 pCoins Añadidos" or "💸 pCoins Removidos"
+                    local color = action == "add" and 3066993 or 15158332
+
+                    local embed = {
+                        {
+                            color = color,
+                            title = title,
+                            description = string.format("Un administrador ha %s pCoins.",
+                                action == "add" and "añadido" or "removido"),
+                            fields = {
+                                {
+                                    name = "👮 Admin",
+                                    value = string.format("**ID:** %s\n**Discord:** <@%s>", src, adminDiscord),
+                                    inline = true
                                 },
-                                footer = {
-                                    text = os.date("%d/%m/%Y %H:%M:%S")
+                                {
+                                    name = "🎯 Jugador",
+                                    value = string.format("**Identificador:** %s\n**Discord:** <@%s>", playerIdentifier,
+                                        discordId),
+                                    inline = true
+                                },
+                                {
+                                    name = "💰 Cambio",
+                                    value = string.format(
+                                        "**Cantidad:** %s pCoins\n**Balance anterior:** %s\n**Balance nuevo:** %s",
+                                        amount, currentPCoins, newBalance),
+                                    inline = false
+                                },
+                                {
+                                    name = "📝 Motivo",
+                                    value = reason,
+                                    inline = false
                                 }
+                            },
+                            footer = {
+                                text = os.date("%d/%m/%Y %H:%M:%S")
                             }
                         }
+                    }
 
-                        PerformHttpRequest(webhook, function() end, "POST", json.encode({ embeds = embed }),
-                            { ["Content-Type"] = "application/json" })
+                    PerformHttpRequest(webhook, function() end, "POST", json.encode({ embeds = embed }),
+                        { ["Content-Type"] = "application/json" })
 
-                        TriggerClientEvent("admin:pCoinsUpdated", src, { success = true, newBalance = newBalance })
+                    TriggerClientEvent("admin:pCoinsUpdated", src, { success = true, newBalance = newBalance })
                 end)
         end)
 end)
@@ -677,101 +766,197 @@ AddEventHandler("admin:deleteItem", function(data)
         return
     end
 
-    exports.oxmysql:fetch("SELECT purchases FROM pts_users WHERE discord_id = ?", { discordId },
-        function(result)
-            if not result or not result[1] or not result[1].purchases then
-                TriggerClientEvent("admin:itemDeleted", src, { success = false })
-                return
-            end
+    if Config.StandaloneMode then
+        exports.oxmysql:fetch(
+            "SELECT up.*, p.title, p.type, p.model FROM devolutions_user_purchases up JOIN devolutions_products p ON up.product_id = p.id WHERE up.discord_id = ? AND up.product_id = ?",
+            { discordId, itemId },
+            function(result)
+                if not result or not result[1] then
+                    TriggerClientEvent("admin:itemDeleted", src, { success = false })
+                    return
+                end
 
-            local success, purchases = pcall(function() return json.decode(result[1].purchases) end)
-            if not success or type(purchases) ~= "table" then
-                TriggerClientEvent("admin:itemDeleted", src, { success = false })
-                return
-            end
+                local purchase = result[1]
 
-            local itemName = "Desconocido"
-            local itemAmount = purchases[itemId] or 0
+                exports.oxmysql:execute("DELETE FROM devolutions_user_purchases WHERE id = ?", { purchase.id },
+                    function()
+                        local adminDiscord = GetDiscordId(src)
+                        local playerIdentifier = data.playerIdentifier or "N/A"
 
-            exports.oxmysql:fetch("SELECT * FROM pts_products WHERE id = ?", { itemId },
-                function(productResult)
-                    if productResult and productResult[1] then
-                        local product = productResult[1]
-                        local categoryConfig = Config.Categories[product.category] or Config.Categories["default"]
-                        local productType = categoryConfig.type
-                        local productModel = ""
-
-                        if product.commands then
-                            local _, cmdModel = product.commands:match("pts_(%w+)%s+(.+)")
-                            if cmdModel then
-                                productModel = cmdModel:gsub('^"', ''):gsub('"%]$', '')
-                            end
-                        end
-                        
-                        itemName = product.title
-                        
-                        local itemInfo = {
-                            title = product.title,
-                            type = productType,
-                            model = productModel,
-                            amount = itemAmount
-                        }
-                        
-                        purchases[itemId] = nil
-                        local jsonPurchases = json.encode(purchases)
-
-                        exports.oxmysql:execute("UPDATE pts_users SET purchases = ? WHERE discord_id = ?",
-                            { jsonPurchases, discordId },
-                            function()
-                                local adminDiscord = GetDiscordId(src)
-                                
-                                playerIdentifier = data.playerIdentifier or "N/A"
-
-                                local webhook = "https://discord.com/api/webhooks/1453808477343453242/1UCtw6dLXQFQGA09NGMrL0T5wieNPqnegB8_ZEYdezzde8TYWjmuZZ1AyOXd55C_eQsh"
-                                local embed = {
+                        local embed = {
+                            {
+                                color = 15158332,
+                                title = "🗑️ Producto Eliminado",
+                                description = "Un administrador ha eliminado un producto de un jugador.",
+                                fields = {
                                     {
-                                        color = 15158332,
-                                        title = "🗑️ Producto Eliminado",
-                                        description = "Un administrador ha eliminado un producto de un jugador.",
-                                        fields = {
-                                            {
-                                                name = "👮 Admin",
-                                                value = string.format("**ID:** %s\n**Discord:** <@%s>", src, adminDiscord),
-                                                inline = true
+                                        name = "👮 Admin",
+                                        value = string.format("**ID:** %s\n**Discord:** <@%s>", src, adminDiscord),
+                                        inline = true
+                                    },
+                                    {
+                                        name = "🎯 Jugador",
+                                        value = string.format("**Identificador:** %s\n**Discord:** <@%s>",
+                                            playerIdentifier, discordId),
+                                        inline = true
+                                    },
+                                    {
+                                        name = "📦 Item Eliminado",
+                                        value = string.format(
+                                            "**Nombre:** %s\n**Tipo:** %s\n**Modelo:** %s\n**Cantidad:** %s",
+                                            purchase.title, purchase.type, purchase.model, purchase.quantity),
+                                        inline = false
+                                    },
+                                    {
+                                        name = "📝 Motivo",
+                                        value = reason,
+                                        inline = false
+                                    }
+                                },
+                                footer = {
+                                    text = os.date("%d/%m/%Y %H:%M:%S")
+                                }
+                            }
+                        }
+
+                        PerformHttpRequest(deleteItemWebhook, function() end, "POST", json.encode({ embeds = embed }),
+                            { ["Content-Type"] = "application/json" })
+
+                        TriggerClientEvent("admin:itemDeleted", src, { success = true })
+
+                        Citizen.Wait(200)
+                        GetAllPlayersWithItems(function(players)
+                            TriggerClientEvent("admin:updatePlayers", src, players)
+                        end)
+                    end)
+            end
+        )
+    else
+        exports.oxmysql:fetch("SELECT purchases FROM pts_users WHERE discord_id = ?", { discordId },
+            function(result)
+                if not result or not result[1] or not result[1].purchases then
+                    TriggerClientEvent("admin:itemDeleted", src, { success = false })
+                    return
+                end
+
+                local success, purchases = pcall(function() return json.decode(result[1].purchases) end)
+                if not success or type(purchases) ~= "table" then
+                    TriggerClientEvent("admin:itemDeleted", src, { success = false })
+                    return
+                end
+
+                local itemName = "Desconocido"
+                local itemAmount = purchases[itemId] or 0
+
+                exports.oxmysql:fetch("SELECT * FROM pts_products WHERE id = ?", { itemId },
+                    function(productResult)
+                        if productResult and productResult[1] then
+                            local product = productResult[1]
+                            local categoryConfig = Config.Categories[product.category] or Config.Categories["default"]
+                            local productType = categoryConfig.type
+                            local productModel = ""
+
+                            if product.commands then
+                                local _, cmdModel = product.commands:match("pts_(%w+)%s+(.+)")
+                                if cmdModel then
+                                    productModel = cmdModel:gsub('^"', ''):gsub('"%]$', '')
+                                end
+                            end
+
+                            itemName = product.title
+
+                            local itemInfo = {
+                                title = product.title,
+                                type = productType,
+                                model = productModel,
+                                amount = itemAmount
+                            }
+
+                            purchases[itemId] = nil
+                            local jsonPurchases = json.encode(purchases)
+
+                            exports.oxmysql:execute("UPDATE pts_users SET purchases = ? WHERE discord_id = ?",
+                                { jsonPurchases, discordId },
+                                function()
+                                    local adminDiscord = GetDiscordId(src)
+
+                                    playerIdentifier = data.playerIdentifier or "N/A"
+
+                                    local embed = {
+                                        {
+                                            color = 15158332,
+                                            title = "🗑️ Producto Eliminado",
+                                            description = "Un administrador ha eliminado un producto de un jugador.",
+                                            fields = {
+                                                {
+                                                    name = "👮 Admin",
+                                                    value = string.format("**ID:** %s\n**Discord:** <@%s>", src,
+                                                        adminDiscord),
+                                                    inline = true
+                                                },
+                                                {
+                                                    name = "🎯 Jugador",
+                                                    value = string.format("**Identificador:** %s\n**Discord:** <@%s>",
+                                                        playerIdentifier, discordId),
+                                                    inline = true
+                                                },
+                                                {
+                                                    name = "📦 Item Eliminado",
+                                                    value = string.format(
+                                                        "**Nombre:** %s\n**Tipo:** %s\n**Modelo:** %s\n**Cantidad:** %s",
+                                                        itemInfo.title, itemInfo.type, itemInfo.model, itemInfo.amount),
+                                                    inline = false
+                                                },
+                                                {
+                                                    name = "📝 Motivo",
+                                                    value = reason,
+                                                    inline = false
+                                                }
                                             },
-                                            {
-                                                name = "🎯 Jugador",
-                                                value = string.format("**Identificador:** %s\n**Discord:** <@%s>", playerIdentifier, discordId),
-                                                inline = true
-                                            },
-                                            {
-                                                name = "📦 Item Eliminado",
-                                                value = string.format("**Nombre:** %s\n**Tipo:** %s\n**Modelo:** %s\n**Cantidad:** %s", 
-                                                    itemInfo.title, itemInfo.type, itemInfo.model, itemInfo.amount),
-                                                inline = false
-                                            },
-                                            {
-                                                name = "📝 Motivo",
-                                                value = reason,
-                                                inline = false
+                                            footer = {
+                                                text = os.date("%d/%m/%Y %H:%M:%S")
                                             }
-                                        },
-                                        footer = {
-                                            text = os.date("%d/%m/%Y %H:%M:%S")
                                         }
                                     }
-                                }
 
-                                PerformHttpRequest(webhook, function() end, "POST", json.encode({ embeds = embed }), { ["Content-Type"] = "application/json" })
+                                    PerformHttpRequest(deleteItemWebhook, function() end, "POST", json.encode({ embeds = embed }),
+                                        { ["Content-Type"] = "application/json" })
 
-                                TriggerClientEvent("admin:itemDeleted", src, { success = true })
-                                
-                                Citizen.Wait(200)
-                                GetAllPlayersWithItems(function(players)
-                                    TriggerClientEvent("admin:updatePlayers", src, players)
+                                    TriggerClientEvent("admin:itemDeleted", src, { success = true })
+
+                                    Citizen.Wait(200)
+                                    GetAllPlayersWithItems(function(players)
+                                        TriggerClientEvent("admin:updatePlayers", src, players)
+                                    end)
                                 end)
-                            end)
                         end
-                end)
-        end)
+                    end)
+            end)
+    end
+end)
+
+RegisterServerEvent("admin:createProduct")
+AddEventHandler("admin:createProduct", function(data)
+    local src = source
+
+    if not Config.StandaloneMode then
+        TriggerClientEvent("admin:productCreated", src,
+            { success = false, message = "Solo disponible en modo standalone" })
+        return
+    end
+
+    exports.oxmysql:execute(
+        "INSERT INTO devolutions_products (title, description, image, category, model, type, icon) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        { data.title, data.description, data.image, data.category, data.model, data.type, data.icon },
+        function(result)
+            if result then
+                TriggerClientEvent("admin:productCreated", src, { success = true, id = result })
+
+                -- Recargar productos
+                TriggerEvent("admin:getProducts", src)
+            else
+                TriggerClientEvent("admin:productCreated", src, { success = false, message = "Error al crear producto" })
+            end
+        end
+    )
 end)

@@ -8,6 +8,13 @@ Config.AllowedGroups = {
     ace = { "bedconfigurator" }      -- ACE permissions
 }
 
+Config.StandaloneMode = false -- If true, the script will run in standalone mode, without using pickle-store // https://picklemods.com/package/6664832
+
+Config.Tables = {
+    Products = Config.StandaloneMode and "devolutions_products" or "pts_products",
+    UserPurchases = Config.StandaloneMode and "devolutions_user_purchases" or "pts_users"
+}
+
 Config.Categories = {
     ["Coches"] = { 
         label = "Coches",

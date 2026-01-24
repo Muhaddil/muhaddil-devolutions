@@ -130,3 +130,17 @@ AddEventHandler("admin:itemDeleted", function(data)
     })
 end)
 
+RegisterNUICallback("createProduct", function(data, cb)
+    TriggerServerEvent("admin:createProduct", data)
+    cb("ok")
+end)
+
+RegisterNetEvent("admin:productCreated")
+AddEventHandler("admin:productCreated", function(data)
+    SendNUIMessage({
+        type = "productCreated",
+        success = data.success,
+        message = data.message,
+        id = data.id
+    })
+end)

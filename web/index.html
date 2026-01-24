@@ -82,6 +82,10 @@
                 <i class="fas fa-plus-circle"></i> Añadir Item
               </div>
 
+              <button class="create-product-btn" id="createProductBtn">
+                <i class="fas fa-box-open"></i> Crear Nuevo Producto
+              </button>
+
               <div id="selectorMode">
                 <div class="form-field">
                   <label>Buscar Producto</label>
@@ -177,6 +181,66 @@
             </button>
             <button class="btn btn-primary" id="confirmAddItem">
               Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay" id="createProductModal">
+        <div class="modal" style="max-width: 600px;">
+          <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-box-open"></i> Crear Nuevo Producto</div>
+            <button class="close-modal" id="closeCreateProductModal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-field">
+              <label>Nombre del Producto *</label>
+              <input type="text" id="newProductTitle" placeholder="Ej: Vehículo BMW M4" />
+            </div>
+
+            <div class="form-field">
+              <label>Tipo *</label>
+              <input type="text" id="newProductType" placeholder="Ej: Vehículo, Item, Verificación" />
+            </div>
+
+            <div class="form-field">
+              <label>Categoría</label>
+              <input type="text" id="newProductCategory" placeholder="Ej: Coches, Helicópteros, Armas" />
+            </div>
+
+            <div class="form-field">
+              <label>Modelo (spawn name para vehículos)</label>
+              <input type="text" id="newProductModel" placeholder="Ej: m4gts, t20, etc." />
+            </div>
+
+            <!-- <div class="form-field">
+              <label>Icono (Font Awesome)</label>
+              <input type="text" id="newProductIcon" placeholder="Ej: fas fa-car, fas fa-helicopter"
+                value="fas fa-box" />
+            </div> -->
+
+            <div class="form-field">
+              <label>Descripción</label>
+              <textarea id="newProductDescription" rows="3" placeholder="Descripción del producto..."></textarea>
+            </div>
+
+            <!-- <div class="form-field">
+              <label>URL de Imagen</label>
+              <input type="text" id="newProductImage" placeholder="https://ejemplo.com/imagen.jpg" />
+            </div> -->
+
+            <div
+              style="background: rgba(40, 167, 69, 0.1); padding: 12px; border-radius: 6px; margin-top: 15px; border: 1px solid rgba(40, 167, 69, 0.3);">
+              <div style="font-size: 11px; color: rgba(255, 255, 255, 0.7);">
+                <i class="fas fa-info-circle" style="color: #28a745;"></i> Los campos marcados con * son obligatorios
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelCreateProduct">Cancelar</button>
+            <button class="btn" id="confirmCreateProduct"
+              style="background: linear-gradient(135deg, #28a745 0%, #218838 100%);">
+              <i class="fas fa-check"></i> Crear Producto
             </button>
           </div>
         </div>
@@ -665,11 +729,9 @@
       let itemData;
 
       if (!selectedProduct) {
-        alert("Por favor selecciona un producto de la lista");
+        // alert("Por favor selecciona un producto de la lista");
         return;
       }
-
-      console.log(selectedProduct.id);
 
       itemData = {
         itemId: selectedProduct.id,
@@ -833,7 +895,7 @@
       const reason = document.getElementById("pCoinsReason").value.trim();
 
       if (amount <= 0) {
-        alert("Por favor ingresa una cantidad válida");
+        // alert("Por favor ingresa una cantidad válida");
         return;
       }
 
@@ -859,12 +921,12 @@
       const reason = document.getElementById("pCoinsReason").value.trim();
 
       if (amount <= 0) {
-        alert("Por favor ingresa una cantidad válida");
+        // alert("Por favor ingresa una cantidad válida");
         return;
       }
 
       if (amount > currentPCoins) {
-        alert(`No puedes quitar más pCoins de los que tiene el jugador (${currentPCoins})`);
+        // alert(`No puedes quitar más pCoins de los que tiene el jugador (${currentPCoins})`);
         return;
       }
 
@@ -1027,6 +1089,19 @@
           }
         }
       }
+
+      if (data.type === "productCreated") {
+        if (data.success) {
+          // alert("Producto creado exitosamente");
+          fetch(`https://${GetParentResourceName()}/getProducts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+        } else {
+          // alert(data.message || "Error al crear producto");
+        }
+      }
     });
 
     document.addEventListener("keydown", (e) => {
@@ -1046,6 +1121,53 @@
           }
         }
       }
+    });
+
+    document.getElementById("createProductBtn").addEventListener("click", () => {
+      document.getElementById("createProductModal").style.display = "flex";
+      document.getElementById("newProductTitle").value = "";
+      document.getElementById("newProductType").value = "";
+      document.getElementById("newProductCategory").value = "";
+      document.getElementById("newProductModel").value = "";
+      document.getElementById("newProductIcon").value = "fas fa-box";
+      document.getElementById("newProductDescription").value = "";
+      document.getElementById("newProductImage").value = "";
+    });
+
+    document.getElementById("closeCreateProductModal").addEventListener("click", () => {
+      document.getElementById("createProductModal").style.display = "none";
+    });
+
+    document.getElementById("cancelCreateProduct").addEventListener("click", () => {
+      document.getElementById("createProductModal").style.display = "none";
+    });
+
+    document.getElementById("confirmCreateProduct").addEventListener("click", () => {
+      const title = document.getElementById("newProductTitle").value.trim();
+      const type = document.getElementById("newProductType").value.trim();
+
+      if (!title || !type) {
+        // alert("El nombre y el tipo son obligatorios");
+        return;
+      }
+
+      const productData = {
+        title: title,
+        type: type,
+        category: document.getElementById("newProductCategory").value.trim(),
+        model: document.getElementById("newProductModel").value.trim(),
+        icon: document.getElementById("newProductIcon").value.trim() || "fas fa-box",
+        description: document.getElementById("newProductDescription").value.trim(),
+        image: document.getElementById("newProductImage").value.trim()
+      };
+
+      fetch(`https://${GetParentResourceName()}/createProduct`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(productData),
+      });
+
+      document.getElementById("createProductModal").style.display = "none";
     });
   </script>
 </body>
