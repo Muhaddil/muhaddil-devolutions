@@ -5,7 +5,8 @@ function toggleAdminPanel()
     SetNuiFocus(isAdminPanelOpen, isAdminPanelOpen)
     SendNUIMessage({
         type = "ui",
-        status = isAdminPanelOpen
+        status = isAdminPanelOpen,
+        standalonemode = Config.StandaloneMode
     })
     if isAdminPanelOpen then
         TriggerServerEvent("devolutions:start")

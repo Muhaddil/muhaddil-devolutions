@@ -348,6 +348,7 @@
     let allProducts = [];
     let selectedProduct = null;
     let currentPCoins = 0;
+    let isStandaloneMode = false;
 
     function updateTabletStatus() {
       const now = new Date();
@@ -417,7 +418,7 @@
       document.getElementById("returnBtn").disabled = true;
       document.getElementById("deleteItemBtn").disabled = true;
       document.getElementById("addItemBtn").disabled = !selectedPlayer;
-      document.getElementById("managePCoinsBtn").disabled = !selectedPlayer;
+      updatePCoinsButtonState();
 
       if (selectedPlayer) {
         fetch(`https://${GetParentResourceName()}/getPCoins`, {
@@ -991,6 +992,9 @@
         document.getElementById("adminPanel").style.display = data.status
           ? "block"
           : "none";
+
+        isStandaloneMode = !!data.standalonemode;
+        updatePCoinsButtonState();
       }
 
       if (data.type === "playersData") {
@@ -1103,6 +1107,20 @@
         }
       }
     });
+
+    function updatePCoinsButtonState() {
+      const btn = document.getElementById("managePCoinsBtn");
+
+      btn.disabled = !selectedPlayer || isStandaloneMode;
+
+      if (isStandaloneMode) {
+        btn.style.opacity = "0.5";
+        btn.title = "pCoins deshabilitado en modo standalone";
+      } else {
+        btn.style.opacity = "1";
+        btn.title = "";
+      }
+    }
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {

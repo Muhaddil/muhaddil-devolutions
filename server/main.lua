@@ -658,6 +658,11 @@ AddEventHandler("admin:getPCoins", function(data)
         return
     end
 
+    if Config.StandaloneMode then
+        TriggerClientEvent("admin:pCoinsResult", src, { pCoins = 'Deshabilitado en modo Standalone' })
+        return
+    end
+
     exports.oxmysql:fetch("SELECT coins FROM pts_users WHERE discord_id = ?", { discordId },
         function(result)
             local pCoins = 0
