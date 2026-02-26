@@ -1147,9 +1147,9 @@
       document.getElementById("newProductType").value = "";
       document.getElementById("newProductCategory").value = "";
       document.getElementById("newProductModel").value = "";
-      document.getElementById("newProductIcon").value = "fas fa-box";
+      // document.getElementById("newProductIcon").value = "fas fa-box";
       document.getElementById("newProductDescription").value = "";
-      document.getElementById("newProductImage").value = "";
+      // document.getElementById("newProductImage").value = "";
     });
 
     document.getElementById("closeCreateProductModal").addEventListener("click", () => {
@@ -1174,9 +1174,9 @@
         type: type,
         category: document.getElementById("newProductCategory").value.trim(),
         model: document.getElementById("newProductModel").value.trim(),
-        icon: document.getElementById("newProductIcon").value.trim() || "fas fa-box",
+        // icon: document.getElementById("newProductIcon").value.trim() || "fas fa-box",
         description: document.getElementById("newProductDescription").value.trim(),
-        image: document.getElementById("newProductImage").value.trim()
+        // image: document.getElementById("newProductImage").value.trim()
       };
 
       fetch(`https://${GetParentResourceName()}/createProduct`, {

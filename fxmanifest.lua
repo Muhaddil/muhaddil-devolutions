@@ -4,7 +4,7 @@ lua54 'yes'
 
 author 'Muhaddil'
 description 'Devolutions System'
-version '1.0.1'
+version '1.0.11'
 
 ui_page 'web/index.html'
 
